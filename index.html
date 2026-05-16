@@ -2,7 +2,12 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
+<meta name="theme-color" content="#0f0f12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <title>Генератор мемов</title>
 <style>
   :root {
@@ -15,14 +20,30 @@
     --accent-hover: #ffd633;
     --border: #2e2e38;
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html {
+    /* фон под safe-area, чтобы при overscroll/notch не было белой полосы */
+    background: var(--bg);
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
   html, body {
     margin: 0;
     padding: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
+    overscroll-behavior-y: contain;
+  }
+  body {
+    /* safe-area: динамический остров / чёлка сверху, home-indicator/жесты снизу,
+       по бокам — для ландшафта на iPhone */
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
   }
   .wrap {
     max-width: 1100px;
@@ -48,7 +69,13 @@
   }
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; }
-    .wrap { padding: 16px 14px 40px; }
+    .wrap {
+      /* +safe-area, чтобы не залезать под чёлку/Dynamic Island/home-indicator */
+      padding-top: max(16px, env(safe-area-inset-top));
+      padding-right: max(14px, env(safe-area-inset-right));
+      padding-bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px));
+      padding-left: max(14px, env(safe-area-inset-left));
+    }
     h1 { font-size: 22px; }
     .sub { font-size: 13px; margin-bottom: 16px; }
     .canvas-card { padding: 12px; gap: 12px; }
@@ -56,6 +83,21 @@
     .panel { padding: 14px; }
     textarea { font-size: 16px; }
     input[type="text"], input[type="number"] { font-size: 16px; }
+    footer {
+      margin-top: 24px;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+  /* Ландшафт на iPhone — особенно важны боковые insets под чёлку */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .wrap {
+      padding-top: max(12px, env(safe-area-inset-top));
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      padding-left: max(14px, env(safe-area-inset-left));
+      padding-right: max(14px, env(safe-area-inset-right));
+    }
+    h1 { font-size: 20px; margin-bottom: 0; }
+    .sub { margin-bottom: 12px; }
   }
   .canvas-card {
     background: var(--panel);
