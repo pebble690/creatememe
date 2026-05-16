@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
 <title>Генератор мемов</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
     --bg: #0f0f12;
@@ -26,6 +27,8 @@
     background: var(--bg);
     height: 100%;
     -webkit-text-size-adjust: 100%;
+    /* manipulation = убирает двойной тап = зум, но оставляет pinch (a11y) */
+    touch-action: manipulation;
   }
   html, body {
     margin: 0;
@@ -36,6 +39,7 @@
     min-height: 100vh;
     min-height: 100dvh;
     overscroll-behavior-y: contain;
+    touch-action: manipulation;
   }
   body {
     /* safe-area: динамический остров / чёлка сверху, home-indicator/жесты снизу,
@@ -354,6 +358,41 @@
 
 <script>
 (function() {
+  // --- Telegram Mini App: разворачиваем на полный экран ---
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) {
+    try { tg.ready(); } catch (e) {}
+    // expand() — занять всю доступную высоту (Bot API 6.1+).
+    // Работает и при открытии из чата, и из списка чатов.
+    try { tg.expand(); } catch (e) {}
+
+    // disableVerticalSwipes() — Bot API 7.7+: блокирует свайп вниз,
+    // которым по умолчанию можно свернуть/закрыть Mini App.
+    if (typeof tg.disableVerticalSwipes === 'function') {
+      try { tg.disableVerticalSwipes(); } catch (e) {}
+    }
+
+    // requestFullscreen() — Bot API 8.0+: настоящий полноэкранный режим,
+    // перекрывающий хедер Telegram (только мобильные клиенты).
+    if (typeof tg.requestFullscreen === 'function') {
+      try { tg.requestFullscreen(); } catch (e) {}
+    }
+
+    // Подгоняем цвета хедера/фона Telegram под страницу.
+    try { tg.setHeaderColor && tg.setHeaderColor('#0f0f12'); } catch (e) {}
+    try { tg.setBackgroundColor && tg.setBackgroundColor('#0f0f12'); } catch (e) {}
+
+    // Если по какой-то причине вьюпорт «схлопнется» (юзер свайпнул, старый клиент) —
+    // принудительно разворачиваем обратно.
+    try {
+      tg.onEvent && tg.onEvent('viewportChanged', (e) => {
+        if (e && e.isStateStable && tg.isExpanded === false) {
+          try { tg.expand(); } catch (err) {}
+        }
+      });
+    } catch (e) {}
+  }
+
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
   const stage = document.getElementById('stage');
