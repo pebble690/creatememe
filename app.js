@@ -10,7 +10,9 @@ import './modes/demotivator.js';
 import './modes/shakal.js';
 
 // Backend для проверки подписки (см. /Users/artemshabalin/Desktop/tg-sub-bot)
-const SUB_API = 'http://204.168.207.71:3001';
+// HTTPS-точка через nip.io + nginx + Let's Encrypt — снимает Mixed Content
+// блокировку, которая была на старом http://204.168.207.71:3001.
+const SUB_API = 'https://204-168-207-71.nip.io';
 const SUB_CHANNEL = '@zteptech';
 const SUB_TIMEOUT_MS = 5000;
 
