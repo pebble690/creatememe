@@ -212,6 +212,12 @@ textarea {
   font-weight: 400;
   letter-spacing: 0.5px;
 }
+/* В демотиваторе подписи рисуются Times New Roman Bold — превью того же шрифта */
+#demotivatorScreen textarea {
+  font-family: "Times New Roman", Times, serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
 input[type="range"] {
   width: 100%;
 }

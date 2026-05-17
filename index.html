@@ -43,10 +43,10 @@
         <span class="menu-title">Мем с текстом</span>
         <span class="menu-arrow">›</span>
       </button>
-      <button class="menu-item locked" type="button" disabled aria-disabled="true">
+      <button class="menu-item" data-mode="demotivator" type="button">
         <span class="menu-icon">🖼️</span>
         <span class="menu-title">Демотиватор</span>
-        <span class="menu-badge">🔒 Скоро</span>
+        <span class="menu-arrow">›</span>
       </button>
       <button class="menu-item" data-mode="shakal" type="button">
         <span class="menu-icon">🐺</span>
@@ -146,10 +146,46 @@
     </div>
   </div>
 
+  <div class="screen editor-screen" id="demotivatorScreen" hidden>
+    <button class="back-btn" type="button">← Назад</button>
+    <h1>Демотиватор</h1>
+    <div class="sub">Загрузите фото и добавьте подпись.</div>
+
+    <div class="layout">
+      <div class="canvas-card">
+        <div class="canvas-stage empty" id="demotivatorStage">
+          <div class="placeholder">
+            <strong>Нажмите, чтобы загрузить фото</strong>
+            или перетащите файл сюда
+          </div>
+          <canvas id="demotivatorCanvas" style="display:none;"></canvas>
+        </div>
+        <div class="row" style="width:100%; max-width: 420px;">
+          <button class="btn" id="demotivatorDownloadBtn" disabled>Скачать</button>
+          <button class="btn btn-ghost" id="demotivatorResetBtn" disabled>Сбросить</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <input type="file" id="demotivatorFileInput" accept="image/*" style="display:none;">
+
+        <label>
+          Крупная подпись
+          <textarea id="demotivatorBigText" rows="2" placeholder="ОСНОВНАЯ ПОДПИСЬ"></textarea>
+        </label>
+
+        <label>
+          Мелкая подпись
+          <textarea id="demotivatorSmallText" rows="2" placeholder="пояснение / комментарий"></textarea>
+        </label>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <a href="https://t.me/+0VqdCrJswgM0MGEy" target="_blank" rel="noopener">Канал разработчиков</a>
     <span class="footer-status" id="footerStatus" hidden></span>
-    <span class="version">v1.5.0</span>
+    <span class="version">v1.6.0</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>

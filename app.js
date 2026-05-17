@@ -6,8 +6,7 @@
 import { tg, showToast } from './shared.js';
 import { initTextMeme } from './modes/text-meme.js';
 import { initShakal } from './modes/shakal.js';
-// Stub-импорт, чтобы файл существовал в сборке и был виден как точка расширения.
-import './modes/demotivator.js';
+import { initDemotivator } from './modes/demotivator.js';
 
 // Backend для проверки подписки (см. /Users/artemshabalin/Desktop/tg-sub-bot)
 // HTTPS-точка через nip.io + nginx + Let's Encrypt — снимает Mixed Content
@@ -24,6 +23,7 @@ if (isInTelegram) {
   initScreens();
   initTextMeme();
   initShakal();
+  initDemotivator();
   initTelegramLinks();
   initSubscriptionGate();
 }
@@ -100,12 +100,16 @@ function initScreens() {
   const menuScreen = document.getElementById('menuScreen');
   const editorScreen = document.getElementById('editorScreen');
   const shakalScreen = document.getElementById('shakalScreen');
-  const modeScreens = { text: editorScreen, shakal: shakalScreen };
+  const demotivatorScreen = document.getElementById('demotivatorScreen');
+  const modeScreens = {
+    text: editorScreen,
+    shakal: shakalScreen,
+    demotivator: demotivatorScreen,
+  };
 
   function showMenu() {
     menuScreen.hidden = false;
-    editorScreen.hidden = true;
-    shakalScreen.hidden = true;
+    Object.values(modeScreens).forEach((s) => { s.hidden = true; });
     if (tg && tg.BackButton) {
       try { tg.BackButton.hide(); } catch (e) {}
     }
