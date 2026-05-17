@@ -5,9 +5,9 @@
 
 import { tg, showToast } from './shared.js';
 import { initTextMeme } from './modes/text-meme.js';
-// Stub-импорты, чтобы файлы существовали в сборке и были видны как точки расширения.
+import { initShakal } from './modes/shakal.js';
+// Stub-импорт, чтобы файл существовал в сборке и был виден как точка расширения.
 import './modes/demotivator.js';
-import './modes/shakal.js';
 
 // Backend для проверки подписки (см. /Users/artemshabalin/Desktop/tg-sub-bot)
 // HTTPS-точка через nip.io + nginx + Let's Encrypt — снимает Mixed Content
@@ -23,6 +23,7 @@ if (isInTelegram) {
   initTelegram();
   initScreens();
   initTextMeme();
+  initShakal();
   initTelegramLinks();
   initSubscriptionGate();
 }
@@ -98,19 +99,23 @@ function initTelegram() {
 function initScreens() {
   const menuScreen = document.getElementById('menuScreen');
   const editorScreen = document.getElementById('editorScreen');
-  const backBtn = document.getElementById('backBtn');
+  const shakalScreen = document.getElementById('shakalScreen');
+  const modeScreens = { text: editorScreen, shakal: shakalScreen };
 
   function showMenu() {
     menuScreen.hidden = false;
     editorScreen.hidden = true;
+    shakalScreen.hidden = true;
     if (tg && tg.BackButton) {
       try { tg.BackButton.hide(); } catch (e) {}
     }
     window.scrollTo(0, 0);
   }
-  function showEditor() {
+  function showMode(mode) {
+    const target = modeScreens[mode];
+    if (!target) return;
     menuScreen.hidden = true;
-    editorScreen.hidden = false;
+    Object.values(modeScreens).forEach((s) => { s.hidden = s !== target; });
     if (tg && tg.BackButton) {
       try { tg.BackButton.show(); } catch (e) {}
     }
@@ -120,13 +125,14 @@ function initScreens() {
   document.querySelectorAll('.menu-item[data-mode]').forEach((el) => {
     el.addEventListener('click', () => {
       if (el.classList.contains('locked')) return;
-      const mode = el.dataset.mode;
-      if (mode === 'text') showEditor();
-      // место для будущих режимов: 'demotivator', 'shakal'
+      showMode(el.dataset.mode);
     });
   });
 
-  backBtn.addEventListener('click', showMenu);
+  // Все back-кнопки (в редакторе мемов и в шакализаторе) ведут в меню.
+  document.querySelectorAll('.back-btn').forEach((btn) => {
+    btn.addEventListener('click', showMenu);
+  });
 
   // Нативная back-кнопка Telegram (стрелка в хедере iOS, системная Back на Android)
   if (tg && tg.BackButton && typeof tg.BackButton.onClick === 'function') {

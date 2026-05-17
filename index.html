@@ -48,10 +48,10 @@
         <span class="menu-title">Демотиватор</span>
         <span class="menu-badge">🔒 Скоро</span>
       </button>
-      <button class="menu-item locked" type="button" disabled aria-disabled="true">
-        <span class="menu-icon">🌀</span>
+      <button class="menu-item" data-mode="shakal" type="button">
+        <span class="menu-icon">🐺</span>
         <span class="menu-title">Шакализатор</span>
-        <span class="menu-badge">🔒 Скоро</span>
+        <span class="menu-arrow">›</span>
       </button>
     </div>
   </div>
@@ -111,10 +111,45 @@
   </div>
   </div>
 
+  <div class="screen editor-screen" id="shakalScreen" hidden>
+    <button class="back-btn" type="button">← Назад</button>
+    <h1>Шакализатор</h1>
+    <div class="sub">Загрузите фото и выберите силу шакализации.</div>
+
+    <div class="layout">
+      <div class="canvas-card">
+        <div class="canvas-stage empty" id="shakalStage">
+          <div class="placeholder">
+            <strong>Нажмите, чтобы загрузить фото</strong>
+            или перетащите файл сюда
+          </div>
+          <canvas id="shakalCanvas" class="pixelated" style="display:none;"></canvas>
+        </div>
+        <div class="row" style="width:100%; max-width: 420px;">
+          <button class="btn" id="shakalDownloadBtn" disabled>Скачать шакал</button>
+          <button class="btn btn-ghost" id="shakalResetBtn" disabled>Сбросить</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <input type="file" id="shakalFileInput" accept="image/*" style="display:none;">
+
+        <div class="field-inline">
+          <span>Сила</span>
+          <input type="range" id="shakalLevel" min="1" max="10" value="5">
+          <span class="value" id="shakalLevelVal">5</span>
+        </div>
+        <p style="font-size: 12px; color: var(--muted); margin: 4px 0 0; line-height: 1.4;">
+          1 — почти без артефактов, 10 — полный шакал.
+        </p>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <a href="https://t.me/+0VqdCrJswgM0MGEy" target="_blank" rel="noopener">Канал разработчиков</a>
     <span class="footer-status" id="footerStatus" hidden></span>
-    <span class="version">v1.4.3</span>
+    <span class="version">v1.5.0</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>

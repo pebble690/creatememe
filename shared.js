@@ -135,7 +135,7 @@ export async function saveBlob(blob, fileName, btn) {
     btn.textContent = 'Готовим…';
   }
   try {
-    const file = new File([blob], fileName, { type: 'image/png' });
+    const file = new File([blob], fileName, { type: blob.type || 'image/png' });
 
     // 1) Web Share API. НЕ гейтим через canShare — Android-WebView Telegram
     // часто врёт, что canShare=false, хотя сам share() работает.
