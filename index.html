@@ -287,6 +287,46 @@
     font-variant-numeric: tabular-nums;
     color: var(--muted);
   }
+  /* Browser-gate: страница доступна только из Telegram Mini App.
+     По умолчанию весь meme-UI скрыт и показан гейт; JS снимает .wrap/.footer
+     из display:none и прячет гейт, только если убедился, что мы в Telegram. */
+  .wrap, footer { display: none; }
+  body.in-tg .wrap { display: block; }
+  body.in-tg footer { display: block; }
+  .browser-gate {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); padding: 24px; z-index: 999;
+  }
+  body.in-tg .browser-gate { display: none; }
+  .gate-card {
+    width: 100%; max-width: 380px; text-align: center;
+    padding: 32px 24px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+  .gate-icon {
+    font-size: 56px; line-height: 1; margin-bottom: 16px;
+  }
+  .gate-card h2 {
+    margin: 0 0 10px; font-size: 22px; font-weight: 700;
+    color: var(--text);
+  }
+  .gate-card p {
+    margin: 0 0 24px; color: var(--muted);
+    font-size: 14px; line-height: 1.5;
+  }
+  .gate-btn {
+    display: inline-block; padding: 14px 28px;
+    background: var(--accent); color: var(--accent-text);
+    text-decoration: none; border-radius: 10px;
+    font-weight: 600; font-size: 15px;
+    transition: background 0.15s;
+  }
+  .gate-btn:hover, .gate-btn:active {
+    background: var(--accent-hover);
+  }
   .toast {
     position: fixed;
     left: 50%;
@@ -368,15 +408,37 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.13</span>
+    <span class="version">v1.1.0</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
+
+<div class="browser-gate" id="browserGate">
+  <div class="gate-card">
+    <div class="gate-icon">🤖</div>
+    <h2>Откройте в Telegram</h2>
+    <p>Этот генератор мемов работает только как Mini App внутри Telegram-бота.</p>
+    <a class="gate-btn" href="https://t.me/ztep_create_meme_bot">Перейти в бота</a>
+  </div>
+</div>
 
 <script>
 (function() {
   // --- Telegram Mini App: разворачиваем на полный экран ---
   const tg = window.Telegram && window.Telegram.WebApp;
+  // tg.platform === 'unknown' значит скрипт telegram-web-app.js загрузился,
+  // но запуск произошёл НЕ из Telegram (просто открыли URL в браузере).
+  const isInTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
+
+  if (!isInTelegram) {
+    // Показываем browser-gate, остальной init не запускаем.
+    // .wrap и footer уже скрыты дефолтным CSS (display:none без in-tg).
+    return;
+  }
+
+  // Подтверждено, что мы в Telegram — открываем UI и продолжаем инициализацию.
+  document.body.classList.add('in-tg');
+
   if (tg) {
     // Маркируем <html>, чтобы CSS зарезервировал отступ под плавающие
     // кнопки Telegram (close, меню) которые наезжают поверх WebView.
