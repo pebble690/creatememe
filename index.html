@@ -354,7 +354,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.6</span>
+    <span class="version">v1.0.7</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -635,19 +635,14 @@
         }
       }
 
-      // 2) Мобильный фолбэк (iOS без Share API + Android-WebView Telegram, где
-      //    атрибут download игнорируется и файл фактически никуда не сохраняется).
-      //    Открываем картинку, чтобы пользователь долгим тапом сохранил в галерею.
+      // 2) Мобильный фолбэк (когда navigator.share недоступен — типично для
+      //    Android-WebView Telegram). Программный a.click() в WebView обычно
+      //    блокируется, но РУЧНОЙ тап по <a download> часто отрабатывает
+      //    через download-listener WebView. Показываем оверлей с большой
+      //    кнопкой-ссылкой, которую пользователь жмёт пальцем.
       if (isMobile()) {
         const url = URL.createObjectURL(blob);
-        let win = null;
-        try { win = window.open(url, '_blank'); } catch (e) {}
-        if (!win) {
-          // попап заблокирован (типично для Telegram WebView) — показываем оверлей
-          showImageOverlay(url);
-        }
-        showToast('Удерживайте картинку → «Сохранить в Фото» / «Загрузить изображение».', 6500);
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        showSaveOverlay(url, fileName);
         return;
       }
 
@@ -670,34 +665,67 @@
     }
   }
 
-  function showImageOverlay(url) {
+  function showSaveOverlay(url, fileName) {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
-      position: fixed; inset: 0; background: rgba(0,0,0,0.92);
-      z-index: 200; display: flex; align-items: center; justify-content: center;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.94);
+      z-index: 200; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
       padding:
         max(20px, env(safe-area-inset-top), var(--tg-top, 0px))
         max(20px, env(safe-area-inset-right), var(--tg-right, 0px))
         max(20px, env(safe-area-inset-bottom), var(--tg-bottom, 0px))
         max(20px, env(safe-area-inset-left), var(--tg-left, 0px));
-      cursor: pointer;
     `;
+
     const im = document.createElement('img');
     im.src = url;
-    im.style.cssText = 'max-width: 100%; max-height: 100%; border-radius: 8px;';
-    const hint = document.createElement('div');
-    hint.textContent = 'Удерживайте картинку → «Сохранить в Фото» / «Загрузить изображение». Тап вне — закрыть.';
-    hint.style.cssText = `
-      position: absolute; left: 0; right: 0;
-      bottom: calc(12px + max(env(safe-area-inset-bottom), var(--tg-bottom, 0px)));
-      text-align: center; color: #fff; font-size: 13px;
-      padding: 0 16px;
-    `;
+    im.style.cssText = 'max-width: 100%; max-height: 55vh; border-radius: 8px; object-fit: contain;';
     overlay.appendChild(im);
-    overlay.appendChild(hint);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) document.body.removeChild(overlay);
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 360px;';
+
+    // РЕАЛЬНАЯ ссылка с download — пользователь жмёт пальцем, не программно.
+    // В Telegram-WebView это часто триггерит системный download manager,
+    // тогда как программный a.click() блокируется.
+    const dl = document.createElement('a');
+    dl.href = url;
+    dl.download = fileName;
+    dl.target = '_blank';
+    dl.rel = 'noopener';
+    dl.textContent = 'Скачать в галерею';
+    dl.style.cssText = `
+      display: block; padding: 16px;
+      background: #ffffff; color: #1a1a20;
+      text-decoration: none; text-align: center;
+      border-radius: 12px; font-weight: 700; font-size: 16px;
+      -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+    `;
+    actions.appendChild(dl);
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = 'Закрыть';
+    close.style.cssText = `
+      padding: 12px; background: transparent; color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 12px; font-size: 14px; cursor: pointer;
+      font-family: inherit;
+    `;
+    close.addEventListener('click', () => {
+      try { URL.revokeObjectURL(url); } catch (e) {}
+      overlay.remove();
     });
+    actions.appendChild(close);
+
+    overlay.appendChild(actions);
+
+    const hint = document.createElement('div');
+    hint.textContent = 'Если кнопка не сработала — удерживайте картинку → «Сохранить».';
+    hint.style.cssText = 'color: rgba(255,255,255,0.65); font-size: 12px; text-align: center; padding: 0 16px; max-width: 360px;';
+    overlay.appendChild(hint);
+
     document.body.appendChild(overlay);
   }
 
