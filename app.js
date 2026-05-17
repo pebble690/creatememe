@@ -150,13 +150,21 @@ function initSubscriptionGate() {
   const recheckBtn = document.getElementById('recheckBtn');
   const footerStatus = document.getElementById('footerStatus');
 
-  function setFooterStatus(text) {
+  function setFooterStatus(text, detail) {
     if (!footerStatus) return;
     if (text) {
       footerStatus.textContent = text;
+      if (detail) {
+        footerStatus.title = detail; // tooltip / long-press на мобиле
+        footerStatus.style.cursor = 'help';
+      } else {
+        footerStatus.removeAttribute('title');
+        footerStatus.style.cursor = '';
+      }
       footerStatus.hidden = false;
     } else {
       footerStatus.textContent = '';
+      footerStatus.removeAttribute('title');
       footerStatus.hidden = true;
     }
   }
@@ -189,8 +197,11 @@ function initSubscriptionGate() {
 
     const userId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
     if (!userId) {
-      // initData нет (предпросмотр / битый launch) — пускаем в меню, помечаем
-      setFooterStatus('Сервер неактивен');
+      // initData нет — предпросмотр в BotFather, "Open Web App" без аутентификации,
+      // или Mini App запущена через URL вместо menu button. Сервер тут не виноват,
+      // отдельный текст чтобы это было видно при отладке.
+      console.warn('subscription check skipped: no tg.initDataUnsafe.user.id', tg && tg.initDataUnsafe);
+      setFooterStatus('Нет user_id', 'tg.initDataUnsafe.user не заполнен — Mini App открыта не через бота');
       showOnly(menuScreen);
       return;
     }
@@ -199,7 +210,12 @@ function initSubscriptionGate() {
 
     if (!res.ok) {
       // Сервер/бот недоступны → graceful fallback
-      setFooterStatus('Сервер неактивен');
+      const err = res.error;
+      const detail = err
+        ? (err.name === 'AbortError' ? `timeout ${SUB_TIMEOUT_MS}ms` : (err.name + ': ' + err.message))
+        : 'unknown';
+      console.warn('subscription check failed:', err);
+      setFooterStatus('Сервер неактивен', detail);
       showOnly(menuScreen);
       return;
     }
@@ -224,7 +240,7 @@ function initSubscriptionGate() {
 
     // Прочие server-side ошибки (channel_not_allowed, bad_user_id…) → fallback
     console.warn('subscription check unexpected response', d);
-    setFooterStatus('Сервер неактивен');
+    setFooterStatus('Сервер неактивен', 'unexpected response: ' + JSON.stringify(d).slice(0, 200));
     showOnly(menuScreen);
   }
 
