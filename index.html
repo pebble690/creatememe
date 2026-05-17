@@ -354,7 +354,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.8</span>
+    <span class="version">v1.0.9</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -640,6 +640,33 @@
     return new URL('_dl/' + id + '/' + encodeURIComponent(fileName), location.href).href;
   }
 
+  // --- Загрузка blob на временный публичный хост ---
+  // Нужно для Android-WebView Telegram, который полностью блокирует
+  // download через blob:/SW. Получив HTTPS-URL, мы можем дёрнуть
+  // tg.downloadFile (Bot API 8.0+, нативный диалог сохранения) или
+  // tg.openLink — система откроет картинку в Chrome, оттуда штатное «Сохранить в Фото».
+  // Используем tmpfiles.org с TTL 1 час → картинка автоматически удаляется.
+  async function uploadToTempHost(blob, fileName) {
+    try {
+      const fd = new FormData();
+      fd.append('file', blob, fileName);
+      const r = await fetch('https://tmpfiles.org/api/v1/upload', {
+        method: 'POST',
+        body: fd,
+      });
+      if (!r.ok) throw new Error('tmpfiles ' + r.status);
+      const j = await r.json();
+      const u = j && j.data && j.data.url;
+      if (!u) throw new Error('no url');
+      // tmpfiles отдаёт viewer-URL вида https://tmpfiles.org/12345/name.png,
+      // direct-download URL — через /dl/.
+      return u.replace('://tmpfiles.org/', '://tmpfiles.org/dl/');
+    } catch (e) {
+      console.warn('tmpfiles upload failed', e);
+      return null;
+    }
+  }
+
   function canvasToBlob() {
     return new Promise((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
@@ -670,34 +697,44 @@
         }
       }
 
-      // 2) Мобильный фолбэк. Android-WebView не умеет резолвить blob: URL для
-      //    DownloadManager, поэтому пытаемся отдать blob через service worker
-      //    как same-origin HTTP-ответ с Content-Disposition: attachment.
-      //    Под такой URL DownloadManager отрабатывает штатно.
+      // 2) Мобильный путь. Android Telegram WebView полностью блокирует
+      //    download (и blob:, и SW-проксирование через DownloadListener).
+      //    Заливаем blob на временный публичный хост (TTL 1 час) и отдаём
+      //    готовый HTTPS-URL: tg.downloadFile() покажет нативный диалог
+      //    сохранения, либо tg.openLink() откроет в системном Chrome.
       if (isMobile()) {
-        const swUrl = await prepareSWDownload(blob, fileName);
-        if (swUrl) {
-          // 2a) Сначала пробуем сразу запустить скачивание программно —
-          //     на современных Android-WebView срабатывает мгновенно.
-          try {
-            const a = document.createElement('a');
-            a.href = swUrl;
-            a.download = fileName;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          } catch (e) {}
-          // 2b) Параллельно показываем оверлей с ТОЙ ЖЕ ссылкой как кнопкой.
-          //     Если программный клик не сработал — пользователь жмёт пальцем,
-          //     это уже доверенный жест, WebView точно передаст в download manager.
-          const previewUrl = URL.createObjectURL(blob);
-          showSaveOverlay(swUrl, fileName, previewUrl);
+        downloadBtn.textContent = 'Загружаем…';
+        const hostedUrl = await uploadToTempHost(blob, fileName);
+
+        if (hostedUrl) {
+          // 2a) Bot API 8.0+ — нативный download-диалог Telegram → галерея.
+          if (tg && typeof tg.downloadFile === 'function') {
+            try {
+              tg.downloadFile({ url: hostedUrl, file_name: fileName });
+              showToast('Подтвердите сохранение в Telegram.', 4000);
+              return;
+            } catch (e) { /* fall through */ }
+          }
+          // 2b) Универсальный путь — открываем картинку в системном браузере,
+          //     там тап-удержание / меню «Скачать» работают штатно.
+          if (tg && typeof tg.openLink === 'function') {
+            try {
+              tg.openLink(hostedUrl);
+              showToast('Сохраните картинку в открывшемся браузере.', 6000);
+              return;
+            } catch (e) { /* fall through */ }
+          }
+          // 2c) Не в Telegram — открываем в новой вкладке.
+          window.open(hostedUrl, '_blank');
+          showToast('Сохраните картинку в открывшейся вкладке.', 6000);
           return;
         }
-        // SW недоступен (HTTP, очень старый клиент) — показываем оверлей с blob URL
-        const url = URL.createObjectURL(blob);
-        showSaveOverlay(url, fileName, url);
+
+        // 3) Хост не ответил (нет сети / CORS / даун) — фолбэк на blob+SW.
+        const swUrl = await prepareSWDownload(blob, fileName);
+        const fallbackUrl = swUrl || URL.createObjectURL(blob);
+        showSaveOverlay(fallbackUrl, fileName, fallbackUrl);
+        showToast('Хост загрузки недоступен — попробуйте долгим тапом.', 6000);
         return;
       }
 
