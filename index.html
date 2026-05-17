@@ -17,7 +17,24 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="screen menu-screen" id="menuScreen">
+  <div class="screen loading-screen" id="loadingScreen">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Проверяем подписку…</div>
+  </div>
+
+  <div class="screen subscription-screen" id="subscriptionScreen" hidden>
+    <div class="sub-card">
+      <div class="sub-icon">📢</div>
+      <h1>Подпишитесь на канал</h1>
+      <p>Доступ к редактору мемов открыт для подписчиков канала <b>@zteptech</b>.</p>
+      <div class="sub-actions">
+        <a class="btn btn-large" id="subscribeBtn" href="https://t.me/zteptech">Подписаться</a>
+        <button class="btn btn-ghost btn-large" id="recheckBtn" type="button">Я подписался — проверить</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen menu-screen" id="menuScreen" hidden>
     <h1>Редактор мемов</h1>
     <div class="sub">Выберите тип мема</div>
     <div class="menu-list">
@@ -96,7 +113,8 @@
 
   <footer>
     <a href="https://t.me/+0VqdCrJswgM0MGEy" target="_blank" rel="noopener">Канал разработчиков</a>
-    <span class="version">v1.3.1</span>
+    <span class="footer-status" id="footerStatus" hidden></span>
+    <span class="version">v1.4.0</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>

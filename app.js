@@ -3,11 +3,16 @@
 // разводит экраны меню ↔ редактор, диспетчит выбор режима из меню.
 // Логика конкретных режимов — в modes/*.
 
-import { tg } from './shared.js';
+import { tg, showToast } from './shared.js';
 import { initTextMeme } from './modes/text-meme.js';
 // Stub-импорты, чтобы файлы существовали в сборке и были видны как точки расширения.
 import './modes/demotivator.js';
 import './modes/shakal.js';
+
+// Backend для проверки подписки (см. /Users/artemshabalin/Desktop/tg-sub-bot)
+const SUB_API = 'http://204.168.207.71:3001';
+const SUB_CHANNEL = '@zteptech';
+const SUB_TIMEOUT_MS = 5000;
 
 const isInTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
 
@@ -17,6 +22,7 @@ if (isInTelegram) {
   initScreens();
   initTextMeme();
   initTelegramLinks();
+  initSubscriptionGate();
 }
 // Если не в Telegram — ничего не делаем, CSS показывает .browser-gate.
 
@@ -125,8 +131,118 @@ function initScreens() {
     try { tg.BackButton.onClick(showMenu); } catch (e) {}
   }
 
-  // Стартуем с меню
-  showMenu();
+  // Стартовый экран ставит initSubscriptionGate (loading → menu/subscription).
+}
+
+// --- Гейт подписки на канал ---
+// При входе: показываем loading-screen, дёргаем /check бэкенда tg-sub-bot,
+// дальше — одно из:
+//   * подписан → меню (обычный путь)
+//   * не подписан → subscription-screen с кнопками «Подписаться» / «Проверить»
+//   * сервер/бот недоступны → пускаем в меню, в футере шильдик «Сервер неактивен»
+function initSubscriptionGate() {
+  const loadingScreen = document.getElementById('loadingScreen');
+  const subscriptionScreen = document.getElementById('subscriptionScreen');
+  const menuScreen = document.getElementById('menuScreen');
+  const editorScreen = document.getElementById('editorScreen');
+  const recheckBtn = document.getElementById('recheckBtn');
+  const footerStatus = document.getElementById('footerStatus');
+
+  function setFooterStatus(text) {
+    if (!footerStatus) return;
+    if (text) {
+      footerStatus.textContent = text;
+      footerStatus.hidden = false;
+    } else {
+      footerStatus.textContent = '';
+      footerStatus.hidden = true;
+    }
+  }
+
+  function showOnly(target) {
+    [loadingScreen, subscriptionScreen, menuScreen, editorScreen].forEach((s) => {
+      if (s) s.hidden = s !== target;
+    });
+  }
+
+  async function fetchCheck(userId) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), SUB_TIMEOUT_MS);
+    try {
+      const url = `${SUB_API}/check?user_id=${encodeURIComponent(userId)}` +
+                  `&channel=${encodeURIComponent(SUB_CHANNEL)}`;
+      const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+      const d = await r.json();
+      return { ok: true, data: d };
+    } catch (e) {
+      // network / mixed-content / timeout / non-JSON — единый «нет связи» исход
+      return { ok: false, error: e };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function check() {
+    showOnly(loadingScreen);
+
+    const userId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
+    if (!userId) {
+      // initData нет (предпросмотр / битый launch) — пускаем в меню, помечаем
+      setFooterStatus('Сервер неактивен');
+      showOnly(menuScreen);
+      return;
+    }
+
+    const res = await fetchCheck(userId);
+
+    if (!res.ok) {
+      // Сервер/бот недоступны → graceful fallback
+      setFooterStatus('Сервер неактивен');
+      showOnly(menuScreen);
+      return;
+    }
+
+    const d = res.data;
+    // PARTICIPANT_ID_INVALID == юзер ни разу не заходил в канал, трактуем как not-subscribed
+    const isParticipantInvalid = !d.ok && typeof d.description === 'string' &&
+                                 d.description.includes('PARTICIPANT_ID_INVALID');
+    const subscribed = d.ok && d.subscribed === true;
+    const notSubscribed = (d.ok && d.subscribed === false) || isParticipantInvalid;
+
+    if (subscribed) {
+      setFooterStatus('');
+      showOnly(menuScreen);
+      return;
+    }
+    if (notSubscribed) {
+      setFooterStatus('');
+      showOnly(subscriptionScreen);
+      return;
+    }
+
+    // Прочие server-side ошибки (channel_not_allowed, bad_user_id…) → fallback
+    console.warn('subscription check unexpected response', d);
+    setFooterStatus('Сервер неактивен');
+    showOnly(menuScreen);
+  }
+
+  if (recheckBtn) {
+    recheckBtn.addEventListener('click', async () => {
+      const wasOnSub = !subscriptionScreen.hidden;
+      const original = recheckBtn.textContent;
+      recheckBtn.disabled = true;
+      recheckBtn.textContent = 'Проверяем…';
+      await check();
+      // Если после проверки всё ещё на subscription-экране — значит, не подписался
+      if (wasOnSub && !subscriptionScreen.hidden) {
+        showToast('Подписка не найдена. Подпишитесь и попробуйте снова.', 4000);
+      }
+      recheckBtn.disabled = false;
+      recheckBtn.textContent = original;
+    });
+  }
+
+  check();
 }
 
 // Перехватываем t.me-ссылки и открываем через нативный API Telegram, иначе
