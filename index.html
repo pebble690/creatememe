@@ -2,24 +2,29 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5">
-<meta name="theme-color" content="#0f0f12">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#ffffff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="format-detection" content="telephone=no">
 <title>Генератор мемов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
-    --bg: #0f0f12;
-    --panel: #1a1a20;
-    --panel-2: #23232b;
-    --text: #f2f2f5;
-    --muted: #9a9aa6;
-    --accent: #ffcc00;
-    --accent-hover: #ffd633;
-    --border: #2e2e38;
+    --bg: #ffffff;
+    --panel: #f5f5f7;
+    --panel-2: #ebebef;
+    --text: #1a1a20;
+    --muted: #6b6b75;
+    --accent: #1a1a20;
+    --accent-hover: #2d2d35;
+    --accent-text: #ffffff;
+    --border: #e2e2e6;
+    --stage-bg: #f0f0f3;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html {
@@ -115,7 +120,7 @@
   }
   .canvas-stage {
     width: 100%;
-    background: #000;
+    background: var(--stage-bg);
     border-radius: 10px;
     overflow: hidden;
     display: flex;
@@ -125,19 +130,20 @@
     position: relative;
   }
   .canvas-stage.empty {
-    background: repeating-linear-gradient(
-      45deg,
-      #15151a,
-      #15151a 10px,
-      #1c1c22 10px,
-      #1c1c22 20px
-    );
+    background:
+      repeating-linear-gradient(
+        45deg,
+        #f0f0f3,
+        #f0f0f3 10px,
+        #e7e7eb 10px,
+        #e7e7eb 20px
+      );
     cursor: pointer;
     transition: background 0.15s;
   }
   .canvas-stage.empty:hover,
   .canvas-stage.empty.drag {
-    background: rgba(255, 204, 0, 0.06);
+    background: #f7f7fa;
     outline: 2px dashed var(--accent);
     outline-offset: -2px;
   }
@@ -149,7 +155,7 @@
     line-height: 1.5;
   }
   .placeholder strong {
-    color: var(--accent);
+    color: var(--text);
     display: block;
     font-size: 16px;
     margin-bottom: 8px;
@@ -193,31 +199,16 @@
   textarea {
     resize: vertical;
     min-height: 60px;
-    font-family: "Times New Roman", Times, serif;
-    font-weight: 700;
+    font-family: Impact, "Anton", "Arial Black", sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.5px;
   }
   input[type="range"] {
     width: 100%;
   }
-  .file-drop {
-    border: 2px dashed var(--border);
-    border-radius: 10px;
-    padding: 18px;
-    text-align: center;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    color: var(--muted);
-    font-size: 13px;
-  }
-  .file-drop:hover, .file-drop.drag {
-    border-color: var(--accent);
-    background: rgba(255, 204, 0, 0.04);
-    color: var(--text);
-  }
-  .file-drop input { display: none; }
   .btn {
     background: var(--accent);
-    color: #1a1a20;
+    color: var(--accent-text);
     border: none;
     border-radius: 8px;
     padding: 12px 16px;
@@ -238,7 +229,7 @@
     color: var(--text);
     border: 1px solid var(--border);
   }
-  .btn-ghost:hover { border-color: var(--accent); background: rgba(255, 204, 0, 0.04); }
+  .btn-ghost:hover { border-color: var(--accent); background: #fafafa; }
   .row {
     display: flex;
     gap: 10px;
@@ -265,20 +256,30 @@
     margin-top: 30px;
   }
   footer a { color: var(--muted); }
+  .version {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
   .toast {
     position: fixed;
     left: 50%;
     bottom: calc(20px + env(safe-area-inset-bottom));
     transform: translateX(-50%) translateY(20px);
-    background: #23232b;
-    color: var(--text);
-    border: 1px solid var(--border);
+    background: #1a1a20;
+    color: #ffffff;
+    border: 1px solid #1a1a20;
     border-radius: 10px;
     padding: 12px 16px;
     font-size: 14px;
     max-width: calc(100% - 32px);
     text-align: center;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s, transform 0.2s;
@@ -311,13 +312,7 @@
     </div>
 
     <div class="panel">
-      <label class="file-drop" id="dropZone">
-        <strong>Выбрать изображение</strong>
-        <div style="margin-top:6px;">или перетащите файл сюда</div>
-        <input type="file" id="fileInput" accept="image/*">
-      </label>
-
-      <div class="divider"></div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none;">
 
       <label>
         Текст сверху
@@ -351,7 +346,8 @@
   </div>
 
   <footer>
-    Шрифт: Times New Roman, белый с чёрной обводкой.
+    Шрифт: Impact, белый с чёрной обводкой.
+    <span class="version">v1.0.0</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -379,8 +375,8 @@
     }
 
     // Подгоняем цвета хедера/фона Telegram под страницу.
-    try { tg.setHeaderColor && tg.setHeaderColor('#0f0f12'); } catch (e) {}
-    try { tg.setBackgroundColor && tg.setBackgroundColor('#0f0f12'); } catch (e) {}
+    try { tg.setHeaderColor && tg.setHeaderColor('#ffffff'); } catch (e) {}
+    try { tg.setBackgroundColor && tg.setBackgroundColor('#ffffff'); } catch (e) {}
 
     // Если по какой-то причине вьюпорт «схлопнется» (юзер свайпнул, старый клиент) —
     // принудительно разворачиваем обратно.
@@ -394,7 +390,6 @@
   }
 
   const fileInput = document.getElementById('fileInput');
-  const dropZone = document.getElementById('dropZone');
   const stage = document.getElementById('stage');
   const placeholder = document.getElementById('placeholder');
   const canvas = document.getElementById('canvas');
@@ -478,10 +473,11 @@
     const value = uppercase.checked ? text.toUpperCase() : text;
     const size = parseInt(fontSize.value, 10);
     const stroke = parseInt(strokeWidth.value, 10);
-    const padding = Math.round(size * 0.3);
-    const maxWidth = canvas.width - padding * 2;
+    const sidePadding = Math.round(size * 0.3);
+    const edgePadding = Math.round(size * 0.7);
+    const maxWidth = canvas.width - sidePadding * 2;
 
-    ctx.font = `bold ${size}px "Times New Roman", Times, serif`;
+    ctx.font = `${size}px Impact, "Anton", "Arial Black", "Helvetica Neue", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = position === 'top' ? 'top' : 'bottom';
     ctx.fillStyle = '#ffffff';
@@ -499,14 +495,14 @@
     const x = canvas.width / 2;
     if (position === 'top') {
       lines.forEach((line, i) => {
-        const y = padding + i * lineHeight;
+        const y = edgePadding + i * lineHeight;
         ctx.strokeText(line, x, y);
         ctx.fillText(line, x, y);
       });
     } else {
       const total = lines.length;
       lines.forEach((line, i) => {
-        const y = canvas.height - padding - (total - 1 - i) * lineHeight;
+        const y = canvas.height - edgePadding - (total - 1 - i) * lineHeight;
         ctx.strokeText(line, x, y);
         ctx.fillText(line, x, y);
       });
@@ -525,19 +521,8 @@
     if (e.target.files[0]) loadFile(e.target.files[0]);
   });
 
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('drag');
-  });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag');
-    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
-  });
-
   stage.addEventListener('click', () => {
-    if (!img) fileInput.click();
+    fileInput.click();
   });
   stage.addEventListener('dragover', (e) => {
     e.preventDefault();
@@ -557,6 +542,12 @@
     render();
   }));
   uppercase.addEventListener('change', render);
+
+  // Перерисовываем после загрузки веб-шрифта Anton, чтобы canvas обновился,
+  // если первый рендер прошёл с системным фолбэком.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => { if (img) render(); });
+  }
 
   const toast = document.getElementById('toast');
   let toastTimer = null;
