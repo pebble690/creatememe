@@ -63,6 +63,11 @@
     padding-top: max(env(safe-area-inset-top), var(--tg-top, 0px), 64px);
     padding-bottom: max(env(safe-area-inset-bottom), var(--tg-bottom, 0px), 12px);
   }
+  /* На iOS плавающие кнопки сидят чуть ниже из-за Dynamic Island / чёлки —
+     добавляем 16px поверх стандартного буфера. */
+  html.in-telegram.tg-ios body {
+    padding-top: max(env(safe-area-inset-top), var(--tg-top, 0px), 80px);
+  }
   .wrap {
     max-width: 1100px;
     margin: 0 auto;
@@ -347,7 +352,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.3</span>
+    <span class="version">v1.0.4</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
