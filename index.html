@@ -46,17 +46,20 @@
     overscroll-behavior-y: contain;
     touch-action: manipulation;
   }
+  body {
+    /* Safe-area на уровне body — нужна в Safari/обычном браузере, чтобы контент
+       не залезал под чёлку / Dynamic Island / home-indicator.
+       В Telegram эти insets обычно = 0 (Telegram сам рендерит хедер над WebView),
+       так что лишнего отступа не появится. */
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
   .wrap {
     max-width: 1100px;
     margin: 0 auto;
-    /* max() сравнивает все источники safe-area:
-       env(safe-area-inset-*) — iOS notch / Dynamic Island / home indicator
-       var(--tg-*)            — Telegram Mini App (close button, 3-dot меню) на Android и iOS,
-                                заполняется из tg.contentSafeAreaInset / tg.safeAreaInset */
-    padding-top: max(24px, env(safe-area-inset-top), var(--tg-top, 0px));
-    padding-right: max(20px, env(safe-area-inset-right), var(--tg-right, 0px));
-    padding-bottom: max(60px, calc(env(safe-area-inset-bottom) + 24px), calc(var(--tg-bottom, 0px) + 24px));
-    padding-left: max(20px, env(safe-area-inset-left), var(--tg-left, 0px));
+    padding: 24px 20px 60px;
   }
   h1 {
     margin: 0 0 4px;
@@ -78,10 +81,7 @@
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; }
     .wrap {
-      padding-top: max(16px, env(safe-area-inset-top), var(--tg-top, 0px));
-      padding-right: max(14px, env(safe-area-inset-right), var(--tg-right, 0px));
-      padding-bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px), calc(var(--tg-bottom, 0px) + 24px));
-      padding-left: max(14px, env(safe-area-inset-left), var(--tg-left, 0px));
+      padding: 16px 14px 40px;
     }
     h1 { font-size: 22px; }
     .sub { font-size: 13px; margin-bottom: 16px; }
@@ -95,14 +95,9 @@
       padding-bottom: env(safe-area-inset-bottom);
     }
   }
-  /* Ландшафт на iPhone — особенно важны боковые insets под чёлку */
+  /* Ландшафт — компактнее */
   @media (orientation: landscape) and (max-height: 500px) {
-    .wrap {
-      padding-top: max(12px, env(safe-area-inset-top), var(--tg-top, 0px));
-      padding-bottom: max(12px, env(safe-area-inset-bottom), var(--tg-bottom, 0px));
-      padding-left: max(14px, env(safe-area-inset-left), var(--tg-left, 0px));
-      padding-right: max(14px, env(safe-area-inset-right), var(--tg-right, 0px));
-    }
+    .wrap { padding: 12px 14px; }
     h1 { font-size: 20px; margin-bottom: 0; }
     .sub { margin-bottom: 12px; }
   }
@@ -345,7 +340,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.1</span>
+    <span class="version">v1.0.2</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -366,11 +361,11 @@
       try { tg.disableVerticalSwipes(); } catch (e) {}
     }
 
-    // requestFullscreen() — Bot API 8.0+: настоящий полноэкранный режим,
-    // перекрывающий хедер Telegram (только мобильные клиенты).
-    if (typeof tg.requestFullscreen === 'function') {
-      try { tg.requestFullscreen(); } catch (e) {}
-    }
+    // requestFullscreen() намеренно НЕ вызываем: в этом режиме close-button и
+    // 3-точки Telegram наезжают на наш контент, а compensation через
+    // contentSafeAreaInset работает только на Bot API 8.0+ (ноябрь 2024).
+    // expand() даёт максимальную высоту, оставляя нативный хедер Telegram сверху —
+    // это и есть надёжный «развернуть на весь экран».
 
     // Подгоняем цвета хедера/фона Telegram под страницу.
     try { tg.setHeaderColor && tg.setHeaderColor('#ffffff'); } catch (e) {}
