@@ -49,12 +49,19 @@
   body {
     /* Safe-area на уровне body — нужна в Safari/обычном браузере, чтобы контент
        не залезал под чёлку / Dynamic Island / home-indicator.
-       В Telegram эти insets обычно = 0 (Telegram сам рендерит хедер над WebView),
-       так что лишнего отступа не появится. */
+       В Telegram эти insets обычно = 0, но close-button / меню Mini App
+       на современных клиентах рендерятся ПОВЕРХ WebView, поэтому ниже
+       для html.in-telegram добавляем гарантированный буфер. */
     padding-top: env(safe-area-inset-top);
     padding-right: env(safe-area-inset-right);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
+  }
+  /* Когда сайт открыт как Mini App — резервируем место под плавающие
+     кнопки Telegram (close, меню) и берём максимум из всех источников. */
+  html.in-telegram body {
+    padding-top: max(env(safe-area-inset-top), var(--tg-top, 0px), 64px);
+    padding-bottom: max(env(safe-area-inset-bottom), var(--tg-bottom, 0px), 12px);
   }
   .wrap {
     max-width: 1100px;
@@ -340,7 +347,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.2</span>
+    <span class="version">v1.0.3</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -350,6 +357,13 @@
   // --- Telegram Mini App: разворачиваем на полный экран ---
   const tg = window.Telegram && window.Telegram.WebApp;
   if (tg) {
+    // Маркируем <html>, чтобы CSS зарезервировал отступ под плавающие
+    // кнопки Telegram (close, меню) которые наезжают поверх WebView.
+    document.documentElement.classList.add('in-telegram');
+    if (tg.platform) {
+      document.documentElement.classList.add('tg-' + tg.platform);
+    }
+
     try { tg.ready(); } catch (e) {}
     // expand() — занять всю доступную высоту (Bot API 6.1+).
     // Работает и при открытии из чата, и из списка чатов.
