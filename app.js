@@ -16,6 +16,7 @@ if (isInTelegram) {
   initTelegram();
   initScreens();
   initTextMeme();
+  initTelegramLinks();
 }
 // Если не в Telegram — ничего не делаем, CSS показывает .browser-gate.
 
@@ -126,4 +127,16 @@ function initScreens() {
 
   // Стартуем с меню
   showMenu();
+}
+
+// Перехватываем t.me-ссылки и открываем через нативный API Telegram, иначе
+// в WebView они отрабатывают непредсказуемо (особенно invite-ссылки на каналы).
+function initTelegramLinks() {
+  if (!tg || typeof tg.openTelegramLink !== 'function') return;
+  document.querySelectorAll('a[href^="https://t.me/"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      try { tg.openTelegramLink(a.href); } catch (err) {}
+    });
+  });
 }
