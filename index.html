@@ -287,6 +287,59 @@
     font-variant-numeric: tabular-nums;
     color: var(--muted);
   }
+  /* Экраны (меню / редактор) */
+  .screen { display: block; }
+  .screen[hidden] { display: none; }
+  .menu-list {
+    display: flex; flex-direction: column; gap: 12px;
+    max-width: 480px;
+  }
+  .menu-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-family: inherit; font-size: 16px;
+    color: var(--text); text-align: left;
+    cursor: pointer; width: 100%;
+    transition: border-color 0.15s, background 0.15s, transform 0.05s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .menu-item:not(.locked):hover {
+    border-color: var(--accent);
+    background: #fafafa;
+  }
+  .menu-item:not(.locked):active { transform: scale(0.99); }
+  .menu-item.locked {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .menu-icon { font-size: 28px; line-height: 1; flex-shrink: 0; }
+  .menu-title { flex: 1; font-weight: 600; }
+  .menu-badge {
+    font-size: 11px; color: var(--muted);
+    padding: 4px 10px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .menu-arrow {
+    font-size: 22px; color: var(--muted); line-height: 1;
+    margin-left: 4px;
+  }
+  .back-btn {
+    display: inline-flex; align-items: center;
+    background: transparent; border: none;
+    color: var(--muted); font-size: 14px;
+    padding: 0; margin-bottom: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .back-btn:hover, .back-btn:active { color: var(--text); }
+
   /* Browser-gate: страница доступна только из Telegram Mini App.
      По умолчанию весь meme-UI скрыт и показан гейт; JS снимает .wrap/.footer
      из display:none и прячет гейт, только если убедился, что мы в Telegram. */
@@ -354,8 +407,32 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Генератор мемов</h1>
-  <div class="sub">Загрузите фото, добавьте текст сверху и снизу — скачайте готовый мем.</div>
+  <div class="screen menu-screen" id="menuScreen">
+    <h1>Генератор мемов</h1>
+    <div class="sub">Выберите тип мема</div>
+    <div class="menu-list">
+      <button class="menu-item" data-mode="text" type="button">
+        <span class="menu-icon">💬</span>
+        <span class="menu-title">Мем с текстом</span>
+        <span class="menu-arrow">›</span>
+      </button>
+      <button class="menu-item locked" type="button" disabled aria-disabled="true">
+        <span class="menu-icon">🖼️</span>
+        <span class="menu-title">Демотиватор</span>
+        <span class="menu-badge">🔒 Скоро</span>
+      </button>
+      <button class="menu-item locked" type="button" disabled aria-disabled="true">
+        <span class="menu-icon">🌀</span>
+        <span class="menu-title">Шакализатор</span>
+        <span class="menu-badge">🔒 Скоро</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="screen editor-screen" id="editorScreen" hidden>
+    <button class="back-btn" id="backBtn" type="button">← Назад</button>
+    <h1>Мем с текстом</h1>
+    <div class="sub">Загрузите фото, добавьте текст сверху и снизу — скачайте готовый мем.</div>
 
   <div class="layout">
     <div class="canvas-card">
@@ -405,10 +482,11 @@
       </label>
     </div>
   </div>
+  </div>
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.1.0</span>
+    <span class="version">v1.2.0</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -515,6 +593,49 @@
       try { tg.onEvent && tg.onEvent(ev, applyTgSafeArea); } catch (e) {}
     });
   }
+
+  // --- Переключение экранов: меню ↔ редактор ---
+  const menuScreen = document.getElementById('menuScreen');
+  const editorScreen = document.getElementById('editorScreen');
+  const backBtn = document.getElementById('backBtn');
+
+  function showMenu() {
+    menuScreen.hidden = false;
+    editorScreen.hidden = true;
+    if (tg && tg.BackButton) {
+      try { tg.BackButton.hide(); } catch (e) {}
+    }
+    if (tg && typeof tg.scrollY === 'number') {
+      window.scrollTo(0, 0);
+    }
+  }
+  function showEditor() {
+    menuScreen.hidden = true;
+    editorScreen.hidden = false;
+    if (tg && tg.BackButton) {
+      try { tg.BackButton.show(); } catch (e) {}
+    }
+    window.scrollTo(0, 0);
+  }
+
+  document.querySelectorAll('.menu-item[data-mode]').forEach((el) => {
+    el.addEventListener('click', () => {
+      if (el.classList.contains('locked')) return;
+      const mode = el.dataset.mode;
+      if (mode === 'text') showEditor();
+      // место для будущих режимов: 'demotivator', 'shakal'
+    });
+  });
+
+  backBtn.addEventListener('click', showMenu);
+
+  // Нативная back-кнопка Telegram (на iOS — стрелка в хедере, на Android — кнопка системы)
+  if (tg && tg.BackButton && typeof tg.BackButton.onClick === 'function') {
+    try { tg.BackButton.onClick(showMenu); } catch (e) {}
+  }
+
+  // Стартуем с меню
+  showMenu();
 
   const fileInput = document.getElementById('fileInput');
   const stage = document.getElementById('stage');
