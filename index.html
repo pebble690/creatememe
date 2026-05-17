@@ -354,7 +354,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.5</span>
+    <span class="version">v1.0.6</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -623,13 +623,15 @@
 
       // 1) Web Share API с файлом — лучший путь на iOS/Android и в WebView Telegram:
       //    открывается нативная "шторка поделиться" → "Сохранить изображение" → Фото/Галерея.
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      //    НЕ гейтим через canShare: в Android-WebView Telegram он часто возвращает false,
+      //    хотя сам share() при этом отрабатывает корректно. Доверяем try/catch.
+      if (navigator.share) {
         try {
-          await navigator.share({ files: [file], title: 'Мем', text: 'Мем' });
+          await navigator.share({ files: [file], title: 'Мем' });
           return;
         } catch (err) {
           if (err && err.name === 'AbortError') return; // пользователь закрыл шторку
-          // иначе — падаем в фолбэк
+          // share не поддержан с файлами → падаем в фолбэк
         }
       }
 
