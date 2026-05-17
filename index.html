@@ -57,15 +57,23 @@
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
   }
-  /* Когда сайт открыт как Mini App — резервируем место под плавающие
-     кнопки Telegram (close, меню) и берём максимум из всех источников. */
+  /* Mini App: для СТАРЫХ Telegram-клиентов (нет contentSafeAreaInset API)
+     резервируем 64px на случай плавающей close-кнопки. */
   html.in-telegram body {
     padding-top: max(env(safe-area-inset-top), var(--tg-top, 0px), 64px);
     padding-bottom: max(env(safe-area-inset-bottom), var(--tg-bottom, 0px), 12px);
   }
-  /* На iOS плавающие кнопки сидят ниже из-за Dynamic Island / чёлки —
-     сверху буфер больше. Снизу env(safe-area-inset-bottom) на iPhone
-     уходит в ~34px под home-indicator, что визуально много — режем на 30%. */
+  /* НОВЫЙ Telegram (Bot API 8.0+) рапортует contentSafeAreaInset — доверяем ему
+     и снимаем 64px-фолбэк. Это критично на Android: в режиме "открыто из чата
+     бота" Telegram рисует title-bar над WebView, contentSafeAreaInset = 0,
+     и 64px превращается в мёртвое пространство. В режиме "из списка чатов"
+     close-кнопка плавает поверх, contentSafeAreaInset вернёт ~60px — будем
+     корректно её обходить. Минимум 12px на визуальный отступ. */
+  html.in-telegram.tg-knows-safe-area body {
+    padding-top: max(env(safe-area-inset-top), var(--tg-top, 0px), 12px);
+  }
+  /* На iOS оставляем как было — пользователь говорит, всё ок.
+     Снизу режем env(safe-area-inset-bottom) на 30%. */
   html.in-telegram.tg-ios body {
     padding-top: max(env(safe-area-inset-top), var(--tg-top, 0px), 100px);
     padding-bottom: max(calc(env(safe-area-inset-bottom) * 0.7), 8px);
@@ -354,7 +362,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.9</span>
+    <span class="version">v1.0.10</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -402,18 +410,29 @@
       });
     } catch (e) {}
 
-    // Telegram safe-area: на Android в fullscreen хедер с close-кнопкой и меню
-    // перекрывает наш контент — компенсируем contentSafeAreaInset/safeAreaInset.
-    // (Bot API 8.0+; на старых клиентах значения будут undefined → CSS использует 0.)
+    // Telegram safe-area: Bot API 8.0+ отдаёт contentSafeAreaInset/safeAreaInset
+    // с актуальными значениями для текущего режима (overlay close-кнопка
+    // vs нативный title-bar над WebView). Если API доступен — навешиваем
+    // .tg-knows-safe-area, и CSS перестаёт применять жёсткий 64px-фолбэк.
     function applyTgSafeArea() {
-      const csa = (tg && tg.contentSafeAreaInset) || {};
-      const sa  = (tg && tg.safeAreaInset) || {};
+      if (!tg) return;
+      const csa = tg.contentSafeAreaInset;
+      const sa  = tg.safeAreaInset;
+      const hasApi = (csa && typeof csa.top === 'number') ||
+                     (sa  && typeof sa.top  === 'number');
+      const root = document.documentElement;
+      if (!hasApi) {
+        // Старый клиент — оставляем дефолтный 64px-фолбэк из CSS
+        root.classList.remove('tg-knows-safe-area');
+        return;
+      }
+      root.classList.add('tg-knows-safe-area');
       const num = (v) => (typeof v === 'number' && !isNaN(v) ? v : 0);
-      const top    = Math.max(num(csa.top),    num(sa.top));
-      const bottom = Math.max(num(csa.bottom), num(sa.bottom));
-      const left   = Math.max(num(csa.left),   num(sa.left));
-      const right  = Math.max(num(csa.right),  num(sa.right));
-      const r = document.documentElement.style;
+      const top    = Math.max(num(csa && csa.top),    num(sa && sa.top));
+      const bottom = Math.max(num(csa && csa.bottom), num(sa && sa.bottom));
+      const left   = Math.max(num(csa && csa.left),   num(sa && sa.left));
+      const right  = Math.max(num(csa && csa.right),  num(sa && sa.right));
+      const r = root.style;
       r.setProperty('--tg-top',    top    + 'px');
       r.setProperty('--tg-bottom', bottom + 'px');
       r.setProperty('--tg-left',   left   + 'px');
