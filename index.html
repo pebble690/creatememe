@@ -72,6 +72,12 @@
   html.in-telegram.tg-knows-safe-area body {
     padding-top: max(env(safe-area-inset-top), var(--tg-top, 0px), 12px);
   }
+  /* На Android из списка чатов overlay-кнопка визуально сидит ниже, поэтому
+     +30% к рапортованному значению. В chat-launch режиме --tg-top = 0,
+     множитель ничего не ломает. */
+  html.in-telegram.tg-knows-safe-area.tg-android body {
+    padding-top: max(env(safe-area-inset-top), calc(var(--tg-top, 0px) * 1.3), 12px);
+  }
   /* На iOS оставляем как было — пользователь говорит, всё ок.
      Снизу режем env(safe-area-inset-bottom) на 30%. */
   html.in-telegram.tg-ios body {
@@ -362,7 +368,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.10</span>
+    <span class="version">v1.0.11</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -532,7 +538,10 @@
     const edgePadding = Math.round(size * 0.7);
     const maxWidth = canvas.width - sidePadding * 2;
 
-    ctx.font = `${size}px Impact, "Anton", "Arial Black", "Helvetica Neue", sans-serif`;
+    // bold нужен явно: на Android Impact не установлен системно, fallback Anton —
+    // single-weight (400), без явного веса браузер не утолщает → текст выходит
+    // тонким. С 'bold' либо находим bold-face, либо браузер faux-bold'нёт fallback.
+    ctx.font = `bold ${size}px Impact, "Anton", "Arial Black", "Helvetica Neue", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = position === 'top' ? 'top' : 'bottom';
     ctx.fillStyle = '#ffffff';
@@ -601,6 +610,11 @@
   // Перерисовываем после загрузки веб-шрифта Anton, чтобы canvas обновился,
   // если первый рендер прошёл с системным фолбэком.
   if (document.fonts && document.fonts.ready) {
+    // Принудительный запрос на bold-вариант Anton — без явной загрузки браузер
+    // может никогда не подтянуть шрифт, если canvas не дёрнут вовремя.
+    if (typeof document.fonts.load === 'function') {
+      document.fonts.load('bold 16px Anton').catch(() => {});
+    }
     document.fonts.ready.then(() => { if (img) render(); });
   }
 
