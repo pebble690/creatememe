@@ -46,18 +46,17 @@
     overscroll-behavior-y: contain;
     touch-action: manipulation;
   }
-  body {
-    /* safe-area: динамический остров / чёлка сверху, home-indicator/жесты снизу,
-       по бокам — для ландшафта на iPhone */
-    padding-top: env(safe-area-inset-top);
-    padding-right: env(safe-area-inset-right);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-  }
   .wrap {
     max-width: 1100px;
     margin: 0 auto;
-    padding: 24px 20px 60px;
+    /* max() сравнивает все источники safe-area:
+       env(safe-area-inset-*) — iOS notch / Dynamic Island / home indicator
+       var(--tg-*)            — Telegram Mini App (close button, 3-dot меню) на Android и iOS,
+                                заполняется из tg.contentSafeAreaInset / tg.safeAreaInset */
+    padding-top: max(24px, env(safe-area-inset-top), var(--tg-top, 0px));
+    padding-right: max(20px, env(safe-area-inset-right), var(--tg-right, 0px));
+    padding-bottom: max(60px, calc(env(safe-area-inset-bottom) + 24px), calc(var(--tg-bottom, 0px) + 24px));
+    padding-left: max(20px, env(safe-area-inset-left), var(--tg-left, 0px));
   }
   h1 {
     margin: 0 0 4px;
@@ -79,11 +78,10 @@
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; }
     .wrap {
-      /* +safe-area, чтобы не залезать под чёлку/Dynamic Island/home-indicator */
-      padding-top: max(16px, env(safe-area-inset-top));
-      padding-right: max(14px, env(safe-area-inset-right));
-      padding-bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px));
-      padding-left: max(14px, env(safe-area-inset-left));
+      padding-top: max(16px, env(safe-area-inset-top), var(--tg-top, 0px));
+      padding-right: max(14px, env(safe-area-inset-right), var(--tg-right, 0px));
+      padding-bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px), calc(var(--tg-bottom, 0px) + 24px));
+      padding-left: max(14px, env(safe-area-inset-left), var(--tg-left, 0px));
     }
     h1 { font-size: 22px; }
     .sub { font-size: 13px; margin-bottom: 16px; }
@@ -100,10 +98,10 @@
   /* Ландшафт на iPhone — особенно важны боковые insets под чёлку */
   @media (orientation: landscape) and (max-height: 500px) {
     .wrap {
-      padding-top: max(12px, env(safe-area-inset-top));
-      padding-bottom: max(12px, env(safe-area-inset-bottom));
-      padding-left: max(14px, env(safe-area-inset-left));
-      padding-right: max(14px, env(safe-area-inset-right));
+      padding-top: max(12px, env(safe-area-inset-top), var(--tg-top, 0px));
+      padding-bottom: max(12px, env(safe-area-inset-bottom), var(--tg-bottom, 0px));
+      padding-left: max(14px, env(safe-area-inset-left), var(--tg-left, 0px));
+      padding-right: max(14px, env(safe-area-inset-right), var(--tg-right, 0px));
     }
     h1 { font-size: 20px; margin-bottom: 0; }
     .sub { margin-bottom: 12px; }
@@ -269,7 +267,7 @@
   .toast {
     position: fixed;
     left: 50%;
-    bottom: calc(20px + env(safe-area-inset-bottom));
+    bottom: calc(20px + max(env(safe-area-inset-bottom), var(--tg-bottom, 0px)));
     transform: translateX(-50%) translateY(20px);
     background: #1a1a20;
     color: #ffffff;
@@ -347,7 +345,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.0</span>
+    <span class="version">v1.0.1</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -387,6 +385,28 @@
         }
       });
     } catch (e) {}
+
+    // Telegram safe-area: на Android в fullscreen хедер с close-кнопкой и меню
+    // перекрывает наш контент — компенсируем contentSafeAreaInset/safeAreaInset.
+    // (Bot API 8.0+; на старых клиентах значения будут undefined → CSS использует 0.)
+    function applyTgSafeArea() {
+      const csa = (tg && tg.contentSafeAreaInset) || {};
+      const sa  = (tg && tg.safeAreaInset) || {};
+      const num = (v) => (typeof v === 'number' && !isNaN(v) ? v : 0);
+      const top    = Math.max(num(csa.top),    num(sa.top));
+      const bottom = Math.max(num(csa.bottom), num(sa.bottom));
+      const left   = Math.max(num(csa.left),   num(sa.left));
+      const right  = Math.max(num(csa.right),  num(sa.right));
+      const r = document.documentElement.style;
+      r.setProperty('--tg-top',    top    + 'px');
+      r.setProperty('--tg-bottom', bottom + 'px');
+      r.setProperty('--tg-left',   left   + 'px');
+      r.setProperty('--tg-right',  right  + 'px');
+    }
+    applyTgSafeArea();
+    ['safeAreaChanged','contentSafeAreaChanged','fullscreenChanged','viewportChanged'].forEach((ev) => {
+      try { tg.onEvent && tg.onEvent(ev, applyTgSafeArea); } catch (e) {}
+    });
   }
 
   const fileInput = document.getElementById('fileInput');
@@ -562,6 +582,12 @@
     return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   }
+  function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+  }
+  function isMobile() {
+    return isIOS() || isAndroid();
+  }
 
   function canvasToBlob() {
     return new Promise((resolve, reject) => {
@@ -591,21 +617,23 @@
         }
       }
 
-      // 2) iOS без Share API (старые версии или ограничения WebView):
-      //    открываем картинку отдельно, чтобы пользователь долгим тапом сохранил в Фото.
-      if (isIOS()) {
+      // 2) Мобильный фолбэк (iOS без Share API + Android-WebView Telegram, где
+      //    атрибут download игнорируется и файл фактически никуда не сохраняется).
+      //    Открываем картинку, чтобы пользователь долгим тапом сохранил в галерею.
+      if (isMobile()) {
         const url = URL.createObjectURL(blob);
-        const win = window.open(url, '_blank');
+        let win = null;
+        try { win = window.open(url, '_blank'); } catch (e) {}
         if (!win) {
-          // если попап заблокирован — показываем картинку поверх страницы
+          // попап заблокирован (типично для Telegram WebView) — показываем оверлей
           showImageOverlay(url);
         }
-        showToast('Удерживайте изображение и выберите «Сохранить в Фото».', 6000);
+        showToast('Удерживайте картинку → «Сохранить в Фото» / «Загрузить изображение».', 6500);
         setTimeout(() => URL.revokeObjectURL(url), 60000);
         return;
       }
 
-      // 3) Desktop / Android Chrome — обычное скачивание.
+      // 3) Desktop — обычное скачивание.
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -629,17 +657,21 @@
     overlay.style.cssText = `
       position: fixed; inset: 0; background: rgba(0,0,0,0.92);
       z-index: 200; display: flex; align-items: center; justify-content: center;
-      padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+      padding:
+        max(20px, env(safe-area-inset-top), var(--tg-top, 0px))
+        max(20px, env(safe-area-inset-right), var(--tg-right, 0px))
+        max(20px, env(safe-area-inset-bottom), var(--tg-bottom, 0px))
+        max(20px, env(safe-area-inset-left), var(--tg-left, 0px));
       cursor: pointer;
     `;
     const im = document.createElement('img');
     im.src = url;
     im.style.cssText = 'max-width: 100%; max-height: 100%; border-radius: 8px;';
     const hint = document.createElement('div');
-    hint.textContent = 'Удерживайте картинку → «Сохранить в Фото». Тап вне — закрыть.';
+    hint.textContent = 'Удерживайте картинку → «Сохранить в Фото» / «Загрузить изображение». Тап вне — закрыть.';
     hint.style.cssText = `
       position: absolute; left: 0; right: 0;
-      bottom: calc(12px + env(safe-area-inset-bottom));
+      bottom: calc(12px + max(env(safe-area-inset-bottom), var(--tg-bottom, 0px)));
       text-align: center; color: #fff; font-size: 13px;
       padding: 0 16px;
     `;
