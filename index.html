@@ -368,7 +368,7 @@
 
   <footer>
     Шрифт: Impact, белый с чёрной обводкой.
-    <span class="version">v1.0.11</span>
+    <span class="version">v1.0.12</span>
   </footer>
 </div>
 <div class="toast" id="toast"></div>
@@ -396,11 +396,15 @@
       try { tg.disableVerticalSwipes(); } catch (e) {}
     }
 
-    // requestFullscreen() намеренно НЕ вызываем: в этом режиме close-button и
-    // 3-точки Telegram наезжают на наш контент, а compensation через
-    // contentSafeAreaInset работает только на Bot API 8.0+ (ноябрь 2024).
-    // expand() даёт максимальную высоту, оставляя нативный хедер Telegram сверху —
-    // это и есть надёжный «развернуть на весь экран».
+    // requestFullscreen() — Bot API 8.0+. На iOS из чата бота Mini App
+    // открывается полу-листом с зазором сверху, expand() этого не лечит
+    // (он работает только по высоте). На Android фуллскрин включает overlay-
+    // режим с плавающей close-кнопкой, который мы уже умеем обходить через
+    // tg-knows-safe-area, НО в chat-launch Android по умолчанию идёт в режиме
+    // title-bar — там фуллскрин ломал бы layout. Поэтому только iOS.
+    if (typeof tg.requestFullscreen === 'function' && tg.platform === 'ios') {
+      try { tg.requestFullscreen(); } catch (e) {}
+    }
 
     // Подгоняем цвета хедера/фона Telegram под страницу.
     try { tg.setHeaderColor && tg.setHeaderColor('#ffffff'); } catch (e) {}
