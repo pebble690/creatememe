@@ -150,23 +150,34 @@ function initSubscriptionGate() {
   const recheckBtn = document.getElementById('recheckBtn');
   const footerStatus = document.getElementById('footerStatus');
 
-  function setFooterStatus(text, detail) {
+  function setFooterStatus(text, shortHint, fullDetail) {
     if (!footerStatus) return;
     if (text) {
-      footerStatus.textContent = text;
-      if (detail) {
-        footerStatus.title = detail; // tooltip / long-press на мобиле
-        footerStatus.style.cursor = 'help';
+      footerStatus.textContent = shortHint ? `${text} · ${shortHint}` : text;
+      if (fullDetail) {
+        footerStatus.title = fullDetail;
+        footerStatus.style.cursor = 'pointer';
+        footerStatus._fullDetail = fullDetail;
       } else {
         footerStatus.removeAttribute('title');
         footerStatus.style.cursor = '';
+        footerStatus._fullDetail = null;
       }
       footerStatus.hidden = false;
     } else {
       footerStatus.textContent = '';
       footerStatus.removeAttribute('title');
+      footerStatus._fullDetail = null;
       footerStatus.hidden = true;
     }
+  }
+
+  // Кликабельный шильдик — тап показывает alert с полной деталью.
+  // Нужно для отладки на мобиле, где тултип/долгий тап на span не всегда работает.
+  if (footerStatus) {
+    footerStatus.addEventListener('click', () => {
+      if (footerStatus._fullDetail) alert(footerStatus._fullDetail);
+    });
   }
 
   function showOnly(target) {
@@ -178,15 +189,24 @@ function initSubscriptionGate() {
   async function fetchCheck(userId) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), SUB_TIMEOUT_MS);
+    const url = `${SUB_API}/check?user_id=${encodeURIComponent(userId)}` +
+                `&channel=${encodeURIComponent(SUB_CHANNEL)}`;
     try {
-      const url = `${SUB_API}/check?user_id=${encodeURIComponent(userId)}` +
-                  `&channel=${encodeURIComponent(SUB_CHANNEL)}`;
-      const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
-      const d = await r.json();
-      return { ok: true, data: d };
+      const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store', mode: 'cors', credentials: 'omit' });
+      if (!r.ok) {
+        // Не-2xx: rate-limit (429), серверная ошибка (5xx) и т.п.
+        const body = await r.text().catch(() => '');
+        return { ok: false, error: new Error(`HTTP ${r.status} ${r.statusText}: ${body.slice(0, 200)}`), url };
+      }
+      const text = await r.text();
+      try {
+        return { ok: true, data: JSON.parse(text), url };
+      } catch (parseErr) {
+        return { ok: false, error: new Error(`non-JSON: ${text.slice(0, 200)}`), url };
+      }
     } catch (e) {
-      // network / mixed-content / timeout / non-JSON — единый «нет связи» исход
-      return { ok: false, error: e };
+      // network / mixed-content / timeout / DNS
+      return { ok: false, error: e, url };
     } finally {
       clearTimeout(timer);
     }
@@ -197,11 +217,8 @@ function initSubscriptionGate() {
 
     const userId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
     if (!userId) {
-      // initData нет — предпросмотр в BotFather, "Open Web App" без аутентификации,
-      // или Mini App запущена через URL вместо menu button. Сервер тут не виноват,
-      // отдельный текст чтобы это было видно при отладке.
       console.warn('subscription check skipped: no tg.initDataUnsafe.user.id', tg && tg.initDataUnsafe);
-      setFooterStatus('Нет user_id', 'tg.initDataUnsafe.user не заполнен — Mini App открыта не через бота');
+      setFooterStatus('Нет user_id', 'no initData', 'tg.initDataUnsafe.user не заполнен — Mini App открыта не через бота');
       showOnly(menuScreen);
       return;
     }
@@ -209,13 +226,17 @@ function initSubscriptionGate() {
     const res = await fetchCheck(userId);
 
     if (!res.ok) {
-      // Сервер/бот недоступны → graceful fallback
       const err = res.error;
-      const detail = err
-        ? (err.name === 'AbortError' ? `timeout ${SUB_TIMEOUT_MS}ms` : (err.name + ': ' + err.message))
+      const shortHint = err
+        ? (err.name === 'AbortError' ? `timeout ${SUB_TIMEOUT_MS}ms` : (err.name || 'Error'))
         : 'unknown';
-      console.warn('subscription check failed:', err);
-      setFooterStatus('Сервер неактивен', detail);
+      const fullDetail = [
+        `URL: ${res.url}`,
+        `user_id: ${userId}`,
+        `error: ${err ? (err.name + ': ' + err.message) : 'unknown'}`,
+      ].join('\n');
+      console.warn('subscription check failed:', err, 'url:', res.url);
+      setFooterStatus('Сервер неактивен', shortHint, fullDetail);
       showOnly(menuScreen);
       return;
     }
@@ -240,7 +261,11 @@ function initSubscriptionGate() {
 
     // Прочие server-side ошибки (channel_not_allowed, bad_user_id…) → fallback
     console.warn('subscription check unexpected response', d);
-    setFooterStatus('Сервер неактивен', 'unexpected response: ' + JSON.stringify(d).slice(0, 200));
+    setFooterStatus(
+      'Сервер неактивен',
+      d && d.error ? d.error : 'unexpected',
+      `URL: ${res.url}\nuser_id: ${userId}\nresponse: ${JSON.stringify(d).slice(0, 400)}`
+    );
     showOnly(menuScreen);
   }
 
