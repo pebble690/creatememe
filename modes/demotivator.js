@@ -102,7 +102,7 @@ export function initDemotivator() {
     // равным толщине рамки (классический демотиваторный вид).
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = BORDER;
-    const GAP = BORDER * 1.5;
+    const GAP = BORDER * 2.5;
     ctx.strokeRect(
       SIDE_PAD - GAP - BORDER / 2,
       TOP_PAD - GAP - BORDER / 2,
