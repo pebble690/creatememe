@@ -98,14 +98,16 @@ export function initDemotivator() {
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvasW, canvas.height);
 
-    // Белая рамка вокруг фото (по периметру, центрирована на границе)
+    // Белая рамка вокруг фото с чёрным зазором между фото и рамкой,
+    // равным толщине рамки (классический демотиваторный вид).
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = BORDER;
+    const GAP = BORDER;
     ctx.strokeRect(
-      SIDE_PAD - BORDER / 2,
-      TOP_PAD - BORDER / 2,
-      iw + BORDER,
-      ih + BORDER,
+      SIDE_PAD - GAP - BORDER / 2,
+      TOP_PAD - GAP - BORDER / 2,
+      iw + GAP * 2 + BORDER,
+      ih + GAP * 2 + BORDER,
     );
 
     // Само фото
