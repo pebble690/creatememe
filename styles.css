@@ -401,46 +401,6 @@ footer a:hover { color: var(--text); text-decoration-color: currentColor; }
 }
 .back-btn:hover, .back-btn:active { color: var(--text); }
 
-/* Browser-gate: страница доступна только из Telegram Mini App.
-   По умолчанию весь meme-UI скрыт и показан гейт; JS снимает .wrap/.footer
-   из display:none и прячет гейт, только если убедился, что мы в Telegram. */
-.wrap, footer { display: none; }
-body.in-tg .wrap { display: block; }
-body.in-tg footer { display: block; }
-.browser-gate {
-  position: fixed; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--bg); padding: 24px; z-index: 999;
-}
-body.in-tg .browser-gate { display: none; }
-.gate-card {
-  width: 100%; max-width: 380px; text-align: center;
-  padding: 32px 24px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-}
-.gate-icon {
-  font-size: 56px; line-height: 1; margin-bottom: 16px;
-}
-.gate-card h2 {
-  margin: 0 0 10px; font-size: 22px; font-weight: 700;
-  color: var(--text);
-}
-.gate-card p {
-  margin: 0 0 24px; color: var(--muted);
-  font-size: 14px; line-height: 1.5;
-}
-.gate-btn {
-  display: inline-block; padding: 14px 28px;
-  background: var(--accent); color: var(--accent-text);
-  text-decoration: none; border-radius: 10px;
-  font-weight: 600; font-size: 15px;
-  transition: background 0.15s;
-}
-.gate-btn:hover, .gate-btn:active {
-  background: var(--accent-hover);
-}
 .toast {
   position: fixed;
   left: 50%;

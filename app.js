@@ -1,7 +1,7 @@
 // app.js — bootstrap.
-// Делает: detect Telegram → gate browser-входы, init Telegram API,
-// разводит экраны меню ↔ редактор, диспетчит выбор режима из меню.
-// Логика конкретных режимов — в modes/*.
+// Делает: detect Telegram → init Telegram API, разводит экраны меню ↔ редактор,
+// диспетчит выбор режима из меню. Логика конкретных режимов — в modes/*.
+// Сайт работает и в обычном браузере: в этом случае показываем экран подписки.
 
 import { tg, showToast } from './shared.js';
 import { initTextMeme } from './modes/text-meme.js';
@@ -14,20 +14,20 @@ import { initDemotivator } from './modes/demotivator.js';
 const SUB_API = 'https://204-168-207-71.nip.io';
 const SUB_CHANNEL = '@zteptech';
 const SUB_TIMEOUT_MS = 5000;
+const BOT_LINK = 'https://t.me/ztep_create_meme_bot';
 
 const isInTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
 
 if (isInTelegram) {
   document.body.classList.add('in-tg');
   initTelegram();
-  initScreens();
-  initTextMeme();
-  initShakal();
-  initDemotivator();
   initTelegramLinks();
-  initSubscriptionGate();
 }
-// Если не в Telegram — ничего не делаем, CSS показывает .browser-gate.
+initScreens();
+initTextMeme();
+initShakal();
+initDemotivator();
+initSubscriptionGate();
 
 function initTelegram() {
   // Маркируем <html>, чтобы CSS зарезервировал отступ под плавающие
@@ -225,6 +225,15 @@ function initSubscriptionGate() {
   async function check() {
     showOnly(loadingScreen);
 
+    // В обычном браузере (вне Telegram) проверить подписку нельзя — нет user_id.
+    // Показываем subscription-экран: «Подписаться» ведёт на канал, recheck-кнопка
+    // переключена на открытие бота (см. ниже).
+    if (!isInTelegram) {
+      setFooterStatus('');
+      showOnly(subscriptionScreen);
+      return;
+    }
+
     const userId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
     if (!userId) {
       console.warn('subscription check skipped: no tg.initDataUnsafe.user.id', tg && tg.initDataUnsafe);
@@ -280,19 +289,28 @@ function initSubscriptionGate() {
   }
 
   if (recheckBtn) {
-    recheckBtn.addEventListener('click', async () => {
-      const wasOnSub = !subscriptionScreen.hidden;
-      const original = recheckBtn.textContent;
-      recheckBtn.disabled = true;
-      recheckBtn.textContent = 'Проверяем…';
-      await check();
-      // Если после проверки всё ещё на subscription-экране — значит, не подписался
-      if (wasOnSub && !subscriptionScreen.hidden) {
-        showToast('Подписка не найдена. Подпишитесь и попробуйте снова.', 4000);
-      }
-      recheckBtn.disabled = false;
-      recheckBtn.textContent = original;
-    });
+    if (!isInTelegram) {
+      // В браузере проверять нечего — вместо recheck отправляем в бота,
+      // там Mini App откроется уже с initData и нормальной проверкой.
+      recheckBtn.textContent = 'Открыть бота в Telegram';
+      recheckBtn.addEventListener('click', () => {
+        window.open(BOT_LINK, '_blank', 'noopener');
+      });
+    } else {
+      recheckBtn.addEventListener('click', async () => {
+        const wasOnSub = !subscriptionScreen.hidden;
+        const original = recheckBtn.textContent;
+        recheckBtn.disabled = true;
+        recheckBtn.textContent = 'Проверяем…';
+        await check();
+        // Если после проверки всё ещё на subscription-экране — значит, не подписался
+        if (wasOnSub && !subscriptionScreen.hidden) {
+          showToast('Подписка не найдена. Подпишитесь и попробуйте снова.', 4000);
+        }
+        recheckBtn.disabled = false;
+        recheckBtn.textContent = original;
+      });
+    }
   }
 
   check();
