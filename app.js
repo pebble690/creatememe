@@ -16,24 +16,34 @@ const SUB_API = 'https://204-168-207-71.nip.io';
 const SUB_CHANNEL = '@zteptech';
 const SUB_TIMEOUT_MS = 5000;
 
-const isInTelegram = !!(tg && tg.platform && tg.platform !== 'unknown');
+// Считаем «мы в Telegram», только если есть подписанный initData (его в браузере не
+// получить) либо tg.platform — одно из известных значений Telegram-клиента.
+// Просто `platform !== 'unknown'` опасно: в новых клиентах могут добавиться
+// неизвестные значения, и мы случайно включим Telegram-логику в браузере.
+const TG_PLATFORMS = ['android', 'android_x', 'ios', 'tdesktop', 'macos', 'web', 'weba', 'webk'];
+const isInTelegram = !!(tg && (
+  (typeof tg.initData === 'string' && tg.initData.length > 0) ||
+  (tg.platform && TG_PLATFORMS.includes(tg.platform))
+));
 
+// Дефолтный экран — меню (см. HTML). Telegram-гейт при инициализации сам
+// переключит на loading. Любые ошибки в init не должны оставлять пустой экран —
+// поэтому каждый шаг в try/catch.
 if (isInTelegram) {
   document.body.classList.add('in-tg');
-  initTelegram();
-  initTelegramLinks();
+  safeRun(initTelegram);
+  safeRun(initTelegramLinks);
 }
-initScreens();
-initTextMeme();
-initShakal();
-initDemotivator();
-
+safeRun(initScreens);
+safeRun(initTextMeme);
+safeRun(initShakal);
+safeRun(initDemotivator);
 if (isInTelegram) {
-  initSubscriptionGate();
-} else {
-  // Браузер: пропускаем loading/subscription, сразу показываем меню.
-  document.getElementById('loadingScreen').hidden = true;
-  document.getElementById('menuScreen').hidden = false;
+  safeRun(initSubscriptionGate);
+}
+
+function safeRun(fn) {
+  try { fn(); } catch (e) { console.error(`[bootstrap] ${fn.name} failed:`, e); }
 }
 
 function initTelegram() {
